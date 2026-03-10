@@ -211,6 +211,13 @@ export const buildDiscussionPrompt = (
     );
   }
 
+  prompt += '\n\n## 最重要（上書き指示）\n' +
+    '- このゲームは議論ではなく「大喜利一本勝負」。\n' +
+    '- 発言パートは「お題への回答」を1つだけ出すこと。\n' +
+    '- 回答は1〜2文、120文字以内、説明口調は禁止。\n' +
+    '- 狙いは「わかりやすく面白い」か「独特で刺さる」かのどちらか。\n' +
+    '- それ以外の戦略解説や長い前置きは不要。';
+
   return prompt;
 };
 
@@ -263,6 +270,11 @@ export const buildVotePrompt = (
   if (eliminatedParticipants) {
     prompt += `\n\n## 退場済み参加者（既にゲームから除外された者）\n${eliminatedParticipants}\n※ 退場者には投票できない。上記の投票可能対象から選ぶこと。`;
   }
+
+  prompt += '\n\n## 投票基準（最重要）\n' +
+    '- 「最も面白かった回答」に投票する。\n' +
+    '- 好き嫌いより回答の完成度・笑いの強さを優先する。\n' +
+    '- 必ず自分以外に1票。';
 
   return prompt;
 };
@@ -365,6 +377,8 @@ export const buildVoteBatchPrompt = (
     '',
     'votes配列には、投票者一覧の全員を1回ずつ含めること。',
   ].join('\n');
+
+  prompt += '\n\n## 最重要\n- これは大喜利の採点である。各投票者は「最も面白い回答者」へ1票を入れること。';
 
   return prompt;
 };
@@ -521,6 +535,8 @@ export const buildDiscussionBatchPrompt = (
     '',
     `items配列には、発話順序の全員（${speakers.length}名）を順番通りに含めること。`,
   ].join('\n');
+
+  prompt += '\n\n## 最重要（上書き指示）\n- 各発言は議論ではなく、お題への「一本回答」を出すこと。短く、オチを作ること。';
 
   return prompt;
 };

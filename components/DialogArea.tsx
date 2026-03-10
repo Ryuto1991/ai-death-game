@@ -139,7 +139,7 @@ export const DialogArea: React.FC<Props> = ({
       clearInterval(typewriterIntervalRef.current);
     }
 
-    const typeSpeed = 30;
+    const typeSpeed = 16;
 
     typewriterIntervalRef.current = setInterval(() => {
       setCurrentDisplayedLength((prev) => {
@@ -223,7 +223,7 @@ export const DialogArea: React.FC<Props> = ({
     if (isThinking && !isVoting) {
       thinkingDotsIntervalRef.current = setInterval(() => {
         setThinkingDots((prev) => (prev + 1) % 4);
-      }, 300);
+      }, 180);
 
       return () => {
         if (thinkingDotsIntervalRef.current) {
@@ -243,7 +243,7 @@ export const DialogArea: React.FC<Props> = ({
     if (isVoting) {
       votingDotsIntervalRef.current = setInterval(() => {
         setVotingDots((prev) => (prev + 1) % 4);
-      }, 300);
+      }, 180);
 
       return () => {
         if (votingDotsIntervalRef.current) {

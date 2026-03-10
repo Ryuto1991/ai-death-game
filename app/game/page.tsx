@@ -435,13 +435,7 @@ export default function GamePage() {
           }, 0);
           break;
         }
-        // ターン頭: 介入モーダルを表示（未使用の場合のみ）
-        if (!interventionUsedThisTurn) {
-          setUIState({ type: 'INTERVENTION_WINDOW' });
-          setIsInterventionOpen(true);
-          break;
-        }
-        // 介入済み → バッチ生成へ直行
+        // 介入なしで即進行
         setPendingAgentId(null);
         setUIState({ type: 'DISCUSSION_THINKING', agentIndex: 0 });
         const controller = new AbortController();
@@ -736,12 +730,6 @@ export default function GamePage() {
       case 'RESOLUTION_NEXT_ROUND_TAP_WAIT': {
         const nextPhase = useGameStore.getState().phase;
         if (nextPhase === GamePhase.DISCUSSION) {
-          // ラウンド頭: 介入モーダルを表示
-          if (!interventionUsedThisTurn) {
-            setUIState({ type: 'INTERVENTION_WINDOW' });
-            setIsInterventionOpen(true);
-            break;
-          }
           if (!useGameStore.getState().isProcessing) {
             setPendingAgentId(null);
             setUIState({ type: 'DISCUSSION_THINKING', agentIndex: 0 });
@@ -826,6 +814,17 @@ export default function GamePage() {
   // handleTapの最新参照（setTimeout等から安全に呼ぶため）
   const handleTapRef = useRef(handleTap);
   handleTapRef.current = handleTap;
+
+  // テンポ改善: タップ待ちを短い自動送りにする（選択モーダル中は除外）
+  useEffect(() => {
+    if (!waitingForTap) return;
+    if (isInterventionOpen) return;
+    if (screenPhase === 'log' || screenPhase === 'game-over') return;
+    const timer = setTimeout(() => {
+      handleTapRef.current();
+    }, 140);
+    return () => clearTimeout(timer);
+  }, [waitingForTap, isInterventionOpen, screenPhase, uiState.type]);
 
   // 最新ログの isStreaming 状態を追跡
   const latestLog = logs.length > 0 ? logs[logs.length - 1] : null;
