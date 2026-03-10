@@ -16,7 +16,7 @@ export const HeroSection: React.FC<Props> = ({ onScrollToHowItWorks }) => {
           <div className="relative aspect-[1200/1789] w-full">
             <Image
               src="/images/lp/hero-image.jpg"
-              alt="AIデスゲームのヒーロービジュアル"
+              alt="AI一本デス大喜利のヒーロービジュアル"
               fill
               priority
               sizes="(max-width: 767px) 100vw, 645px"
@@ -30,7 +30,7 @@ export const HeroSection: React.FC<Props> = ({ onScrollToHowItWorks }) => {
             <div className="hero-logo-glitch relative">
               <Image
                 src="/images/lp/hero-logo.webp"
-                alt="AIデスゲーム ロゴ"
+                alt="AI一本デス大喜利 ロゴ"
                 width={1000}
                 height={338}
                 priority
@@ -65,9 +65,9 @@ export const HeroSection: React.FC<Props> = ({ onScrollToHowItWorks }) => {
                 textShadow: '0 2px 12px rgba(0,0,0,0.95), 0 0 30px rgba(0,0,0,0.9)',
               }}
             >
-              AIの命懸けの議論に割り込み、
+              AI芸人5人の一本回答を見届け、
               <br />
-              <span className="text-[#66ff33]">あなたの無茶振りで展開をぶち壊せ</span>
+              <span className="text-[#66ff33]">お題と回答で笑いを決めろ</span>
             </p>
           </div>
         </div>
