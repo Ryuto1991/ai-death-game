@@ -8,6 +8,7 @@ interface AgentData {
   characterId: string;
   name: string;
   isAlive: boolean;
+  stageTime: number;
 }
 
 interface VoteInfo {
@@ -67,6 +68,7 @@ export const StatusBar: React.FC<Props> = ({
             name={agent.name}
             isAlive={agent.isAlive}
             isSpeaking={agent.id === speakingAgentId}
+            stageTime={agent.stageTime}
             receivedVotes={voteInfo?.receivedVotes || 0}
             votedForName={votedForName}
             showVoteInfo={showVoteInfo}

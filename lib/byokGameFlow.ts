@@ -105,7 +105,7 @@ export async function byokProcessDiscussionTurn(
       return;
     }
 
-    const { byokApiKey, byokGmInstruction } = get();
+    const { byokApiKey, byokGmInstruction, roundTopic } = get();
     if (!byokApiKey) {
       removePlaceholder();
       setAgentSpeaking(speaker.id, false);
@@ -119,9 +119,14 @@ export async function byokProcessDiscussionTurn(
           gmInstructions: byokGmInstruction,
           specialRules: [] as string[],
           agentModifiers: {} as Record<string, string>,
-          roundContext: '',
+          roundContext: `現在のお題: ${roundTopic}`,
         }
-      : undefined;
+      : {
+          gmInstructions: '',
+          specialRules: [],
+          agentModifiers: {},
+          roundContext: `現在のお題: ${roundTopic}`,
+        };
 
     const recentLogs = logs.slice(-RECENT_LOGS_LIMIT_FOR_AI);
 

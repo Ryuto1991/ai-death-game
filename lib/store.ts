@@ -17,7 +17,13 @@ import {
   DiscussionBatchItem,
 } from './types';
 import { INITIAL_UI_STATE } from './uiState';
-import { AGENT_PERSONALITIES, MASTER_CHARACTER, MASTER_LINES } from './constants';
+import {
+  AGENT_PERSONALITIES,
+  INITIAL_STAGE_TIME,
+  MASTER_CHARACTER,
+  MASTER_LINES,
+  OGIRI_TOPICS,
+} from './constants';
 import { getMaxAchievedRarity } from './hiddenCharacter';
 import { parseStreamResponse } from './turnResponseParser';
 import { timerRegistry } from './timerRegistry';
@@ -61,6 +67,7 @@ interface GameStore {
   playCountConsumed: boolean;
   phase: GamePhase;
   round: number;
+  roundTopic: string;
   currentTurnInRound: number; // ラウンド内ターン番号（1始まり、ターン周回ごとに+1）
   agents: Agent[];
   logs: LogEntry[];
@@ -188,6 +195,12 @@ const shuffleArray = <T>(array: T[]): T[] => {
 // ゲーム参加人数
 const GAME_PARTICIPANT_COUNT = 5;
 const RECENT_LOGS_LIMIT_FOR_AI = 12;
+const PRESSURED_STAGE_TIME = 1;
+
+const pickRandomTopic = (): string => {
+  const idx = Math.floor(Math.random() * OGIRI_TOPICS.length);
+  return OGIRI_TOPICS[idx] || '今日のお題は自由回答';
+};
 
 const createAgents = (): Agent[] => {
   // 最高到達レア度に応じてプールを決定（unlockTier未設定=常時使用可能）
@@ -209,6 +222,8 @@ const createAgents = (): Agent[] => {
     characterId: p.characterId,
     name: p.name,
     isAlive: true,
+    stageTime: INITIAL_STAGE_TIME,
+    status: 'normal' as const,
     stats: p.stats,
     isSpeaking: false,
     tone: p.tone,
@@ -243,6 +258,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   playCountConsumed: false,
   phase: GamePhase.IDLE,
   round: 1,
+  roundTopic: '',
   currentTurnInRound: 1,
   agents: [],
   logs: [],
@@ -327,6 +343,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       logs: [],
       phase: GamePhase.IDLE,
       round: 1,
+      roundTopic: '',
       currentTurnInRound: 1,
       currentTurnIndex: 0,
       currentVoteIndex: 0,
@@ -352,9 +369,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // ゲーム開始
   startGame: () => {
-    const { addLog, agents } = get();
-    set({ phase: GamePhase.DISCUSSION, currentTurnIndex: 0, playCountConsumed: false });
-    addLog(LogType.MASTER, MASTER_LINES.GAME_START(1), MASTER_CHARACTER.id);
+    const { addLog } = get();
+    const initialTopic = pickRandomTopic();
+    set({
+      phase: GamePhase.DISCUSSION,
+      currentTurnIndex: 0,
+      playCountConsumed: false,
+      roundTopic: initialTopic,
+    });
+    addLog(LogType.MASTER, MASTER_LINES.GAME_START(1, initialTopic), MASTER_CHARACTER.id);
   },
 
   // ログ追加
@@ -634,7 +657,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // 投票を並列で先に取得（advanceToVoting時に呼ばれる）
   fetchAllVotesParallel: async () => {
-    const { agents, logs, gameSessionId } = get();
+    const { agents, logs, roundTopic } = get();
     const aliveAgents = agents.filter((a) => a.isAlive);
     const { isByok: isByokVote } = get();
     const recentLogs = logs.slice(isByokVote ? -15 : -RECENT_LOGS_LIMIT_FOR_AI);
@@ -653,16 +676,19 @@ export const useGameStore = create<GameStore>((set, get) => ({
         return;
       }
 
-      const fallbackTargetId = leftmostAlive.id;
-      const fallbackTargetName = leftmostAlive.name;
+      const getFallbackTargetForVoter = (voter: Agent): Agent => {
+        const other = aliveAgents.find((a) => a.id !== voter.id);
+        return other || leftmostAlive;
+      };
       const candidates = aliveAgents;
 
       const buildFallbackResult = (voter: Agent): CachedVoteResult => {
+        const fallbackTarget = getFallbackTargetForVoter(voter);
         return {
           voterId: voter.id,
           voterName: voter.name,
-          targetId: fallbackTargetId,
-          targetName: fallbackTargetName,
+          targetId: fallbackTarget.id,
+          targetName: fallbackTarget.name,
         };
       };
 
@@ -678,6 +704,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
           candidates,
           allAgents: agents,
           recentLogs,
+          promptContext: {
+            gmInstructions: '',
+            specialRules: ['自分自身には投票しないこと'],
+            agentModifiers: {},
+            roundContext: `現在のお題: ${roundTopic}`,
+          },
           onError: (msg: string) => get().setByokError(msg),
         }, byokApiKey);
 
@@ -687,14 +719,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         results = aliveAgents.map((voter) => {
           const vote = voteMap.get(voter.id);
-          const validTarget = candidates.find((candidate) => candidate.id === vote?.vote_target_id);
-          const targetId = validTarget ? validTarget.id : fallbackTargetId;
+          const validTarget = candidates.find(
+            (candidate) => candidate.id === vote?.vote_target_id && candidate.id !== voter.id
+          );
+          const fallbackTarget = getFallbackTargetForVoter(voter);
+          const targetId = validTarget ? validTarget.id : fallbackTarget.id;
           const target = agents.find((agent) => agent.id === targetId);
           return {
             voterId: voter.id,
             voterName: voter.name,
             targetId,
-            targetName: target?.name || fallbackTargetName,
+            targetName: target?.name || fallbackTarget.name,
           };
         });
       } else {
@@ -727,8 +762,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const fallbackResults = aliveAgents.map((voter) => ({
         voterId: voter.id,
         voterName: voter.name,
-        targetId: leftmostAlive?.id || voter.id,
-        targetName: leftmostAlive?.name || voter.name,
+        targetId: aliveAgents.find((a) => a.id !== voter.id)?.id || leftmostAlive?.id || voter.id,
+        targetName: aliveAgents.find((a) => a.id !== voter.id)?.name || leftmostAlive?.name || voter.name,
       }));
       const fallbackTallies: Record<string, number> = {};
       fallbackResults.forEach((result) => {
@@ -846,144 +881,108 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // 投票結果適用（退場者を特定してキューに入れ、司会ログを追加）
   // 注意: この時点ではisAliveは変更しない（断末魔演出後に変更）
   applyVotingResult: (): { eliminated: string[]; penalized: string[] } => {
-    const { agents, voteTallies, addLog, cachedVoteResults, userVote, gameStats, round } = get();
+    const { agents, voteTallies, addLog, userVote, gameStats, round } = get();
     const aliveAgents = agents.filter((a) => a.isAlive);
-
-    // 最終ラウンド特別ルール: 生存者2人で両者が自分に投票し、GMが「見守る」を選択した場合のみ両方生存
-    if (aliveAgents.length === 2 && userVote?.type === 'watch') {
-      const bothSelfVoted = cachedVoteResults.every(
-        (result) => result.voterId === result.targetId
-      );
-
-      if (bothSelfVoted) {
-        // 両者棄権（自己投票）→ 両方生存エンド
-        const survivorNames = aliveAgents.map((a) => a.name);
-        addLog(LogType.MASTER, MASTER_LINES.GAME_OVER_BOTH_SURVIVE(survivorNames), MASTER_CHARACTER.id);
-        // 生存者システムメッセージを追加
-        addLog(LogType.SYSTEM, `［生存者：${survivorNames.join('、')}］`);
-        // 両者のhappy表情に変更 + winnerIdsをセット
-        set((state) => ({
-          agents: state.agents.map((a) =>
-            aliveAgents.some((alive) => alive.id === a.id)
-              ? { ...a, currentExpression: 'happy' as Expression }
-              : a
-          ),
-          winnerIds: aliveAgents.map((a) => a.id),
-          victoryCommentsFetched: {},
-          currentVictoryIndex: 0,
-          phase: GamePhase.GAME_OVER,
-          isProcessing: false,
-        }));
-        return { eliminated: [], penalized: [] };
-      }
-    }
-
-    // 結果集計：最多票を獲得した全員を特定
-    let maxVotes = 0;
-    const loserIds: string[] = [];
     const eliminated: string[] = [];
-
-    // まず最多票数を特定
-    Object.entries(voteTallies).forEach(([, count]) => {
-      if (count > maxVotes) {
-        maxVotes = count;
-      }
-    });
-
-    // 最多票を獲得した全員を収集
-    Object.entries(voteTallies).forEach(([id, count]) => {
-      if (count === maxVotes) {
-        loserIds.push(id);
-      }
-    });
-
-    // 退場処理
-    if (loserIds.length === 0) {
-      // 投票なし（通常発生しない）
-      set({ phase: GamePhase.RESOLUTION, isProcessing: false });
-      return { eliminated, penalized: [] };
-    }
-
-    // 全員同票チェック（全生存者が最多票）
-    const isAllTie = loserIds.length === aliveAgents.length;
-
-    // 退場キューを作成（まだisAliveは変更しない）
+    const penalized: string[] = [];
     const eliminationQueue: EliminationQueueItem[] = [];
 
-    if (isAllTie) {
-      // 全員同票 → 全員退場
-      addLog(LogType.MASTER, MASTER_LINES.ALL_TIE(), MASTER_CHARACTER.id);
-
-      aliveAgents.forEach((a) => {
-        eliminated.push(a.id);
-        eliminationQueue.push({
-          agentId: a.id,
-          agentName: a.name,
-          characterId: a.characterId,
-        });
-      });
-    } else if (loserIds.length === 1) {
-      // 単独最多票 → 1人退場
-      const loserId = loserIds[0];
-      const loser = agents.find((a) => a.id === loserId);
-      if (loser) {
-        addLog(LogType.MASTER, MASTER_LINES.ELIMINATION(loser.name), MASTER_CHARACTER.id);
-        eliminated.push(loserId);
-        eliminationQueue.push({
-          agentId: loser.id,
-          agentName: loser.name,
-          characterId: loser.characterId,
-        });
-      }
-    } else {
-      // 同票（複数人） → 該当者全員退場
-      const loserNames = loserIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
-      addLog(LogType.MASTER, MASTER_LINES.TIE_ELIMINATION(loserNames), MASTER_CHARACTER.id);
-
-      loserIds.forEach((id) => {
-        const agent = agents.find((a) => a.id === id);
-        if (agent) {
-          eliminated.push(id);
-          eliminationQueue.push({
-            agentId: agent.id,
-            agentName: agent.name,
-            characterId: agent.characterId,
-          });
-        }
-      });
+    if (aliveAgents.length === 0) {
+      set({ phase: GamePhase.RESOLUTION, isProcessing: false });
+      return { eliminated, penalized };
     }
 
-    // GM投票が退場につながったかを記録
+    // 生存者全員の得票を0埋めして最下位/トップ判定
+    const scores: Record<string, number> = {};
+    aliveAgents.forEach((agent) => {
+      scores[agent.id] = voteTallies[agent.id] || 0;
+    });
+
+    let maxVotes = Number.MIN_SAFE_INTEGER;
+    let minVotes = Number.MAX_SAFE_INTEGER;
+    Object.values(scores).forEach((count) => {
+      if (count > maxVotes) maxVotes = count;
+      if (count < minVotes) minVotes = count;
+    });
+
+    const topIds = aliveAgents.filter((a) => scores[a.id] === maxVotes).map((a) => a.id);
+    const bottomIds = aliveAgents.filter((a) => scores[a.id] === minVotes).map((a) => a.id);
+
+    if (topIds.length > 0) {
+      const topNames = topIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
+      addLog(LogType.MASTER, MASTER_LINES.ROUND_TOP(topNames), MASTER_CHARACTER.id);
+    }
+    if (bottomIds.length > 0) {
+      const bottomNames = bottomIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
+      addLog(LogType.MASTER, MASTER_LINES.ROUND_BOTTOM(bottomNames), MASTER_CHARACTER.id);
+    }
+
+    // 最下位全員の舞台持ち時間を-1。0以下で退場キューへ。
+    const stageTimeNextById: Record<string, number> = {};
+    bottomIds.forEach((id) => {
+      const agent = agents.find((a) => a.id === id);
+      if (!agent) return;
+      const nextStageTime = Math.max(0, agent.stageTime - 1);
+      stageTimeNextById[id] = nextStageTime;
+      penalized.push(id);
+      addLog(
+        LogType.MASTER,
+        MASTER_LINES.STAGE_TIME_DOWN(agent.name, nextStageTime),
+        MASTER_CHARACTER.id
+      );
+      if (nextStageTime === 0) {
+        eliminated.push(id);
+        eliminationQueue.push({
+          agentId: agent.id,
+          agentName: agent.name,
+          characterId: agent.characterId,
+        });
+      }
+    });
+
+    if (eliminationQueue.length > 1) {
+      addLog(
+        LogType.MASTER,
+        MASTER_LINES.TIE_ELIMINATION(eliminationQueue.map((item) => item.agentName)),
+        MASTER_CHARACTER.id
+      );
+    } else if (eliminationQueue.length === 1) {
+      addLog(LogType.MASTER, MASTER_LINES.ELIMINATION(eliminationQueue[0].agentName), MASTER_CHARACTER.id);
+    }
+
     const updatedStats = { ...gameStats };
     if (userVote && userVote.targetId && eliminated.includes(userVote.targetId)) {
-      // 今回のラウンドの投票履歴を更新
       updatedStats.userVoteHistory = updatedStats.userVoteHistory.map((h) =>
         h.round === round ? { ...h, resultedInElimination: true } : h
       );
     }
     updatedStats.totalRounds = round;
-    // 最終ラウンドの同時退場者数を記録（トロフィー判定用）
     updatedStats.lastEliminationCount = eliminationQueue.length;
 
-    // 最終戦以外での自己犠牲（自己投票による退場）をカウント
-    const isFinalRound = aliveAgents.length === 2;
-    if (!isFinalRound) {
-      const selfSacrificeInThisRound = cachedVoteResults.filter(
-        (result) => result.voterId === result.targetId && eliminated.includes(result.voterId)
-      ).length;
-      updatedStats.selfSacrificeCount += selfSacrificeInThisRound;
-    }
-
-    // 退場者の表情をpainfulに変更（まだisAliveはtrue）
     set((state) => ({
       agents: state.agents.map((a) => {
-        if (loserIds.includes(a.id)) {
+        if (!a.isAlive) return a;
+        const nextStageTime = stageTimeNextById[a.id] ?? a.stageTime;
+        if (eliminated.includes(a.id)) {
           return {
             ...a,
+            stageTime: nextStageTime,
+            status: 'pressured',
             currentExpression: 'painful' as Expression,
           };
         }
-        return a;
+        if (bottomIds.includes(a.id)) {
+          return {
+            ...a,
+            stageTime: nextStageTime,
+            status: nextStageTime <= PRESSURED_STAGE_TIME ? 'pressured' : 'normal',
+            currentExpression: 'painful' as Expression,
+          };
+        }
+        return {
+          ...a,
+          status: a.stageTime <= PRESSURED_STAGE_TIME ? 'pressured' : 'normal',
+        };
       }),
       phase: GamePhase.RESOLUTION,
       isProcessing: false,
@@ -993,7 +992,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       gameStats: updatedStats,
     }));
 
-    return { eliminated, penalized: [] };
+    return { eliminated, penalized };
   },
 
   // 断末魔APIを並列取得
@@ -1101,7 +1100,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // 退場完了（isAlive=false、DELETEDログ）
   finishElimination: (agentId: string) => {
-    const { agents, addLog } = get();
+    const { agents, addLog, round } = get();
     const agent = agents.find((a) => a.id === agentId);
 
     if (!agent) return;
@@ -1114,6 +1113,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return {
             ...a,
             isAlive: false,
+            status: 'eliminated',
+            eliminationRound: round,
           };
         }
         return a;
@@ -1127,7 +1128,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // 退場を確定（後方互換：startElimination + finishEliminationを一度に実行）
   confirmElimination: (agentId: string) => {
-    const { agents, addLog } = get();
+    const { agents, addLog, round } = get();
     const agent = agents.find((a) => a.id === agentId);
 
     if (!agent) return;
@@ -1140,6 +1141,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return {
             ...a,
             isAlive: false,
+            status: 'eliminated',
+            eliminationRound: round,
             currentExpression: 'fainted' as Expression,
           };
         }
@@ -1209,12 +1212,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({ phase: GamePhase.GAME_OVER });
     } else {
       const newRound = round + 1;
-      const isFinalRound = survivors.length === 2;
+      const nextTopic = pickRandomTopic();
 
       // ラウンド開始時に順番をシャッフル
       shuffleAgents();
       set({
         round: newRound,
+        roundTopic: nextTopic,
         currentTurnInRound: 1,
         phase: GamePhase.DISCUSSION,
         currentTurnIndex: 0,
@@ -1224,13 +1228,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         votingComplete: false,
       });
       addLog(LogType.SYSTEM, '--------------------------------');
-
-      // 最終ラウンド（生存者2人）なら特別ルールを告知
-      if (isFinalRound) {
-        addLog(LogType.MASTER, MASTER_LINES.FINAL_ROUND_START(newRound), MASTER_CHARACTER.id);
-      } else {
-        addLog(LogType.MASTER, MASTER_LINES.NEXT_ROUND(newRound), MASTER_CHARACTER.id);
-      }
+      addLog(LogType.MASTER, MASTER_LINES.NEXT_ROUND(newRound, nextTopic), MASTER_CHARACTER.id);
     }
   },
 
@@ -1254,6 +1252,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       playCountConsumed: false,
       phase: GamePhase.IDLE,
       round: 1,
+      roundTopic: '',
       currentTurnInRound: 1,
       agents: createAgents(),
       logs: [],

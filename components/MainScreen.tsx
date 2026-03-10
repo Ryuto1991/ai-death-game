@@ -12,6 +12,7 @@ interface AgentData {
   characterId: string;
   name: string;
   isAlive: boolean;
+  stageTime: number;
 }
 
 interface VoteInfo {
@@ -40,6 +41,7 @@ interface CurrentDisplay {
 interface Props {
   round: number;
   turn: number;
+  topic: string;
   agents: AgentData[];
   currentDisplay: CurrentDisplay;
   contentPhase: ContentPhase; // 現在表示するコンテンツフェーズ（親が制御）
@@ -69,6 +71,7 @@ interface Props {
 export const MainScreen: React.FC<Props> = ({
   round,
   turn,
+  topic,
   agents,
   currentDisplay,
   contentPhase,
@@ -90,7 +93,7 @@ export const MainScreen: React.FC<Props> = ({
   return (
     <div className="flex flex-col h-full bg-black text-green-500 max-w-2xl mx-auto">
       {/* ヘッダー: 約5% */}
-      <Header round={round} turn={turn} onLogClick={onLogClick} />
+      <Header round={round} turn={turn} topic={topic} onLogClick={onLogClick} />
 
       {/* ステータスバー: 約12% */}
       <StatusBar

@@ -7,6 +7,7 @@ interface Props {
   characterId: string;
   name: string;
   isAlive: boolean;
+  stageTime: number;
   isSpeaking?: boolean;
   receivedVotes?: number;  // 獲得票数
   votedForName?: string;   // 投票先の名前
@@ -28,6 +29,7 @@ export const MiniPortrait: React.FC<Props> = ({
   characterId,
   name,
   isAlive,
+  stageTime,
   isSpeaking = false,
   receivedVotes = 0,
   votedForName,
@@ -170,7 +172,7 @@ export const MiniPortrait: React.FC<Props> = ({
         ) : showVoteInfo && votedForName ? (
           <span className="font-bold" style={{ color: '#ffff00' }}>[{votedForName}]</span>
         ) : (
-          <span className="text-transparent">-</span>
+          <span className="text-cyan-300 font-bold">持ち時間:{stageTime}</span>
         )}
       </div>
     </div>

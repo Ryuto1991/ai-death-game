@@ -16,6 +16,9 @@ export interface Agent {
   characterId: string;  // 'yumi' | 'kenichiro' | ... （画像パス用）
   name: string;
   isAlive: boolean;
+  stageTime: number;
+  status: 'normal' | 'pressured' | 'eliminated';
+  eliminationRound?: number;
   stats: AgentStats;
   isSpeaking: boolean;
   tone: string;  // 口調の特徴

@@ -315,7 +315,8 @@ export async function byokVoteBatch(
         const parsedVote = parsedMap.get(voter.id);
         const hasValidTarget =
           !!parsedVote &&
-          (candidateIds.has(parsedVote.vote_target_id) || parsedVote.vote_target_id === voter.id);
+          candidateIds.has(parsedVote.vote_target_id) &&
+          parsedVote.vote_target_id !== voter.id;
 
         return {
           voter_id: voter.id,

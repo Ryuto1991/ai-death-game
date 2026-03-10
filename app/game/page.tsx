@@ -52,6 +52,7 @@ export default function GamePage() {
   const {
     phase,
     round,
+    roundTopic,
     currentTurnInRound,
     agents,
     logs,
@@ -1187,6 +1188,7 @@ export default function GamePage() {
     characterId: a.characterId,
     name: a.name,
     isAlive: a.isAlive,
+    stageTime: a.stageTime,
   }));
 
   // GAME_OVER + 勝利コメント表示完了で game-over 画面に遷移
@@ -1302,6 +1304,7 @@ export default function GamePage() {
           <MainScreen
             round={round}
             turn={currentTurnInRound}
+            topic={roundTopic}
             agents={agentData}
             currentDisplay={currentDisplay}
             contentPhase={contentPhase}

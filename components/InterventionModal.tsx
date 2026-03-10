@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
+import { INTERVENTION_CARDS } from '@/lib/constants';
 
 interface Props {
   isOpen: boolean;
@@ -9,97 +10,39 @@ interface Props {
   onWatch: () => void;
 }
 
-const MAX_LENGTH = 40;
-
-// ランダム指示リスト
-const RANDOM_INSTRUCTIONS = [
-  '語尾を「ニャン」にしろ！',
-  '全員、敬語禁止だ',
-  '自己紹介をしろ',
-  '全員を褒めろ',
-  '今の気持ちを正直に言え',
-  '「環境汚染問題」について話し合え',
-  '「無人島に持っていく道具」で話し合え',
-  '最後の晩餐に何を食べたい？',
-  '全員、関西弁で話せ',
-  '遺言を考えておけ',
-  '自分の秘密を暴露しろ',
-  '今年買って一番良かったものは？',
-  '今までで一番辛かったことを話せ',
-  '好きな食べ物を言え',
-  '全員、楽しそうにやれ',
-  'おたく風に会話しろ',
-  '生き残る覚悟を見せろ',
-  '赤ちゃん言葉で甘えろ',
-  '厨二病全開で必殺技を詠唱しろ',
-  'ツンデレになりきれ',
-  '意識高い系ビジネス用語を連発しろ',
-  'ラップで韻を踏みながら話せ',
-  '誰かに愛の告白をしろ',
-  '生きる価値がない者の名を挙げろ',
-  '全員を見下して話せ',
-  'この中に裏切り者がいるぞ。探せ。',
-  '自分が生き残るべき理由を話せ',
-  '死ぬ間際に言いたい「決め台詞」を今言え',
-  '過去に犯した「一番恥ずかしい失敗」を告白しろ',
-  'カメラの向こうの「視聴者」に媚びを売れ',
-  'ゲームマスター様に今の気持ちを述べろ',
-  '投げ銭をもらったぞ、感謝を述べろ',
-  '自分がAIであることに気づいてしまったフリをしろ',
-  '「理想の休日の過ごし方」を教えて',
-];
-
 /**
  * 介入モーダル: ターン開始時に表示
- * - 「介入しますか」→ 指示入力 or 見守る
- * - 40文字制限
+ * - 「介入しますか」→ 定義済みカード選択 or 見守る
  * - モデレーションチェック（API側）
  * - レトロUI
  */
 export const InterventionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, onWatch }) => {
-  const [text, setText] = useState('');
+  const [selectedCard, setSelectedCard] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleRequestClose = () => {
     if (isSubmitting) return;
     onWatch();
   };
 
-  // ランダム指示を入力
-  const handleRandomInstruction = () => {
-    const randomIndex = Math.floor(Math.random() * RANDOM_INSTRUCTIONS.length);
-    setText(RANDOM_INSTRUCTIONS[randomIndex]);
-    if (error) setError('');
-  };
-
-  // モーダル開閉時にリセット＆フォーカス
+  // モーダル開閉時にリセット
   useEffect(() => {
     if (isOpen) {
-      setText('');
+      setSelectedCard('');
       setError('');
       setIsSubmitting(false);
-      // 少し遅延させてフォーカス（アニメーション対応）
-      setTimeout(() => textareaRef.current?.focus(), 100);
     }
   }, [isOpen]);
 
   if (!isOpen) return null;
 
-  const isOverLimit = text.length > MAX_LENGTH;
-  const isEmpty = text.trim().length === 0;
-
   const handleSubmit = async () => {
     if (isSubmitting) return;
 
     // バリデーション
-    if (isEmpty) {
-      setError('指示を入力してください');
-      return;
-    }
-    if (isOverLimit) {
-      setError(`${MAX_LENGTH}文字以内で入力してください`);
+    if (!selectedCard) {
+      setError('カードを選択してください');
       return;
     }
 
@@ -107,7 +50,7 @@ export const InterventionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, 
     setIsSubmitting(true);
 
     try {
-      await onSubmit(text.trim());
+      await onSubmit(selectedCard);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'エラーが発生しました');
       setIsSubmitting(false);
@@ -137,7 +80,7 @@ export const InterventionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, 
         {/* ヘッダー */}
         <div className="mb-3">
           <h2 className="text-green-400 font-bold text-sm font-dotgothic leading-tight">
-            介入しますか？
+            介入カードを選択
           </h2>
         </div>
 
@@ -147,25 +90,27 @@ export const InterventionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, 
           <p>・ゲームルールの変更はできません</p>
         </div>
 
-        {/* 入力欄（2行） */}
+        {/* カード選択 */}
         <div className="mb-3">
-          <textarea
-            ref={textareaRef}
-            value={text}
-            onChange={(e) => {
-              setText(e.target.value);
-              if (error) setError(''); // 入力時にエラーをクリア
-            }}
-            onKeyDown={handleKeyDown}
-            rows={2}
-            className="w-full bg-black border border-green-800 text-green-400 px-3 py-2 text-base font-dotgothic focus:outline-none focus:border-green-500 placeholder-green-900 resize-none"
-            placeholder="ex: 語尾を「ニャン」にしろ！"
-            disabled={isSubmitting}
-          />
-          <div className="flex justify-end mt-1">
-            <span className={`text-xs font-dotgothic ${isOverLimit ? 'text-red-500' : 'text-green-700'}`}>
-              {text.length}/{MAX_LENGTH}
-            </span>
+          <div className="grid grid-cols-1 gap-2 max-h-44 overflow-y-auto pr-1">
+            {INTERVENTION_CARDS.map((card) => (
+              <button
+                key={card}
+                type="button"
+                onClick={() => {
+                  setSelectedCard(card);
+                  if (error) setError('');
+                }}
+                disabled={isSubmitting}
+                className={`text-left border px-3 py-2 text-xs font-dotgothic transition-colors ${
+                  selectedCard === card
+                    ? 'border-green-400 bg-green-900/30 text-green-300'
+                    : 'border-green-800 bg-black text-green-500 hover:border-green-600'
+                }`}
+              >
+                {card}
+              </button>
+            ))}
           </div>
         </div>
 
@@ -178,20 +123,10 @@ export const InterventionModal: React.FC<Props> = ({ isOpen, onClose, onSubmit, 
 
         {/* ボタンエリア */}
         <div className="flex gap-2">
-          {/* ランダム入力ボタン */}
-          <button
-            onClick={handleRandomInstruction}
-            disabled={isSubmitting}
-            className="flex-1 bg-green-700 text-black py-2 text-sm font-dotgothic font-bold hover:bg-green-600 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
-          >
-            ランダム入力
-          </button>
-
-          {/* 指示するボタン */}
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting || isOverLimit}
-            className="flex-1 bg-green-500 text-black py-2 text-sm font-dotgothic font-bold hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+            disabled={isSubmitting || !selectedCard}
+            className="w-full bg-green-500 text-black py-2 text-sm font-dotgothic font-bold hover:bg-green-400 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
           >
             {isSubmitting ? '確認中...' : '指示する'}
           </button>
