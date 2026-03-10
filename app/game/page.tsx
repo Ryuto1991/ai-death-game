@@ -85,7 +85,6 @@ export default function GamePage() {
     shuffleSelectedAgents,
     // ユーザー投票関連
     setUserVote,
-    showGmVoteLog,
     fetchAllVotesParallel,
     // 統一UI状態マシン
     uiState,
@@ -106,7 +105,6 @@ export default function GamePage() {
   const [isFetchingVictoryComment, setIsFetchingVictoryComment] = useState(false);
   const [victoryCommentDisplayed, setVictoryCommentDisplayed] = useState(false);
   const [dialogPhase, setDialogPhase] = useState<DialogPhase>('idle');
-  const [gmVoteAnimation, setGmVoteAnimation] = useState<{ targetId: string; addVotes: number } | null>(null);
   const [contentPhase, setContentPhase] = useState<ContentPhase>('speech');
   const [isAssetPreparing, setIsAssetPreparing] = useState(false);
   const [isNavigatingToTop, setIsNavigatingToTop] = useState(false);
@@ -472,8 +470,10 @@ export default function GamePage() {
       // 議論フェーズ: 投票開始セリフ後
       // ============================================
       case 'DISCUSSION_COMPLETE_TAP_WAIT': {
-        // ユーザー投票モーダルへ
-        setUIState({ type: 'VOTE_USER_MODAL' });
+        // 観客投票を開始（ユーザー投票モーダルは使用しない）
+        setUserVote({ type: 'watch', targetId: null });
+        setUIState({ type: 'VOTE_FETCHING' });
+        fetchAllVotesParallel();
         break;
       }
 
@@ -497,10 +497,15 @@ export default function GamePage() {
         // 次の投票ログを表示
         const allVotesShown = showNextVoteLog();
 
-        // 全エージェント投票表示完了 → GM投票へ
+        // 全エージェント投票表示完了 → 観客集計ログを表示
         if (allVotesShown) {
-          // GM投票アニメーションはuseEffectで自動処理
-          setUIState({ type: 'VOTE_GM_ANIMATING' });
+          addLog(LogType.MASTER, '観客の投票が出そろった。結果を反映する。', MASTER_CHARACTER.id);
+          useGameStore.setState({ votingComplete: true });
+          setTimeout(() => {
+            const newLogsLength = useGameStore.getState().logs.length;
+            setCurrentLogIndex(newLogsLength - 1);
+            setUIState({ type: 'VOTE_GM_TYPING' });
+          }, 0);
           return;
         }
 
@@ -516,10 +521,10 @@ export default function GamePage() {
       }
 
       // ============================================
-      // 投票フェーズ: GM投票ログ表示後
+      // 投票フェーズ: 観客集計ログ表示後
       // ============================================
       case 'VOTE_GM_TAP_WAIT': {
-        // GM投票ログ表示後 → 結果適用フェーズへ
+        // 観客集計ログ表示後 → 結果適用フェーズへ
         advanceToResolution();
         setTimeout(() => {
           const storeState = useGameStore.getState();
@@ -901,59 +906,6 @@ export default function GamePage() {
     }
   }, [uiState.type, votingFetchComplete, showNextVoteLog, setUIState]);
 
-  // GM投票公開フェーズを監視
-  useEffect(() => {
-    if (uiState.type === 'VOTE_GM_ANIMATING') {
-      // ユーザー投票情報を取得
-      const storeState = useGameStore.getState();
-      const userVote = storeState.userVote;
-
-      if (userVote && userVote.type !== 'watch' && userVote.targetId) {
-        const addVotes = 1;
-        const targetId = userVote.targetId; // クロージャ用に保持
-
-        // 1. 最初にログを表示（「GMは〇〇を強制退場」）
-        showGmVoteLog();
-
-        // 2. ログ表示後にアニメーション開始
-        setTimeout(() => {
-          // GM票をvoteResultsに反映（これによりreceivedVotesにGM票が含まれる）
-          const currentVoteResults = useGameStore.getState().voteResults;
-          const newResults = { ...currentVoteResults };
-          if (!newResults[targetId]) {
-            newResults[targetId] = { receivedVotes: 0 };
-          }
-          newResults[targetId].receivedVotes += addVotes;
-          useGameStore.setState({ voteResults: newResults });
-
-          // アニメーション開始
-          setGmVoteAnimation({ targetId, addVotes });
-
-          // ログ表示を更新（この時点ではまだアニメ中）
-          const newLogsLength = useGameStore.getState().logs.length;
-          setCurrentLogIndex(newLogsLength - 1);
-          setUIState({ type: 'VOTE_GM_TYPING' });
-
-          // アニメーション時間後に完了
-          const animationDuration = 700;
-          setTimeout(() => {
-            setGmVoteAnimation(null);
-          }, animationDuration);
-        }, 100); // 少し待ってからアニメーション開始
-      } else {
-        // 見守る場合はアニメーションなしで即ログ表示
-        showGmVoteLog();
-
-        // ログ追加後に表示を更新
-        setTimeout(() => {
-          const newLogsLength = useGameStore.getState().logs.length;
-          setCurrentLogIndex(newLogsLength - 1);
-          setUIState({ type: 'VOTE_GM_TYPING' });
-        }, 0);
-      }
-    }
-  }, [uiState.type, showGmVoteLog, setUIState]);
-
   // 勝利コメント取得・表示を監視（複数勝者対応）
   useEffect(() => {
     // GAME_OVER_FETCHINGで、勝者がいて、現在の勝者のコメントがまだ取得されていない場合
@@ -1184,6 +1136,22 @@ export default function GamePage() {
     stageTime: a.stageTime,
   }));
 
+  const latestAnswers = useMemo(() => {
+    const answers: Record<string, string> = {};
+    agents.forEach((agent) => {
+      answers[agent.id] = '';
+    });
+
+    logs.forEach((log) => {
+      if (log.type !== LogType.AGENT_TURN || !log.agentId) return;
+      const speech = (log.speech ?? '').trim();
+      if (!speech) return;
+      answers[log.agentId] = speech;
+    });
+
+    return answers;
+  }, [agents, logs]);
+
   // GAME_OVER + 勝利コメント表示完了で game-over 画面に遷移
   // 勝者がいない場合（全滅）か、勝利コメント表示完了時に遷移
   useEffect(() => {
@@ -1300,6 +1268,7 @@ export default function GamePage() {
             topic={roundTopic}
             audienceGauge={audienceGauge}
             agents={agentData}
+            latestAnswers={latestAnswers}
             currentDisplay={currentDisplay}
             contentPhase={contentPhase}
             contentKey={currentLog?.id ?? `log-${currentLogIndex}`}
@@ -1310,7 +1279,7 @@ export default function GamePage() {
             isVoting={isVoting}
             voteResults={voteResults}
             showVoteInfo={phase === GamePhase.VOTING || phase === GamePhase.RESOLUTION}
-            gmVoteAnimation={gmVoteAnimation}
+            gmVoteAnimation={null}
             onLogClick={handleLogClick}
             onTap={handleTap}
             onTypingComplete={handleTypingComplete}

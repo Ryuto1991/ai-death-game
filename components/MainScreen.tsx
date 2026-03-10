@@ -44,6 +44,7 @@ interface Props {
   topic: string;
   audienceGauge: number;
   agents: AgentData[];
+  latestAnswers: Record<string, string>;
   currentDisplay: CurrentDisplay;
   contentPhase: ContentPhase; // 現在表示するコンテンツフェーズ（親が制御）
   contentKey?: string; // 一意のコンテンツキー（変更時にタイプライターをリセット）
@@ -75,6 +76,7 @@ export const MainScreen: React.FC<Props> = ({
   topic,
   audienceGauge,
   agents,
+  latestAnswers,
   currentDisplay,
   contentPhase,
   contentKey,
@@ -132,6 +134,19 @@ export const MainScreen: React.FC<Props> = ({
         showVoteInfo={showVoteInfo}
         gmVoteAnimation={gmVoteAnimation}
       />
+
+      {/* 各キャラの最新回答一覧（見失い防止） */}
+      <div className="px-3 py-2 border-b border-green-900 bg-[#041004] max-h-[112px] overflow-y-auto">
+        <div className="text-[11px] text-green-500/80 font-bold">最新回答一覧</div>
+        <div className="mt-1 space-y-1">
+          {agents.map((agent) => (
+            <div key={agent.id} className="text-xs leading-snug">
+              <span className="text-green-400">{agent.name}：</span>
+              <span className="text-green-100 break-words">{latestAnswers[agent.id] || '---'}</span>
+            </div>
+          ))}
+        </div>
+      </div>
 
       {/* フォーカスエリア: 16:9比率で横長に */}
       <div className="h-[30%] sm:h-[35%]">
