@@ -808,11 +808,16 @@ export default function GamePage() {
     if (!waitingForTap) return;
     if (isInterventionOpen) return;
     if (screenPhase === 'log' || screenPhase === 'game-over') return;
+    const speechLen = currentDisplay?.speech?.length ?? 0;
+    const isMasterLine = currentDisplay?.isMaster ?? false;
+    const baseDelay = isMasterLine ? 1100 : 1400;
+    const extraDelay = Math.min(2200, speechLen * 18);
+    const autoAdvanceMs = baseDelay + extraDelay;
     const timer = setTimeout(() => {
       handleTapRef.current();
-    }, 900);
+    }, autoAdvanceMs);
     return () => clearTimeout(timer);
-  }, [waitingForTap, isInterventionOpen, screenPhase, uiState.type]);
+  }, [waitingForTap, isInterventionOpen, screenPhase, uiState.type, currentDisplay?.speech, currentDisplay?.isMaster]);
 
   // 最新ログの isStreaming 状態を追跡
   const latestLog = logs.length > 0 ? logs[logs.length - 1] : null;

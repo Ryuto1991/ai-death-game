@@ -286,11 +286,8 @@ export const DialogArea: React.FC<Props> = ({
   const isCurrentlyTyping = isTyping && !typingDone;
   const isLoadingState = !isThinking && !isVoting && !isExecuting && currentText.length === 0;
 
-  // 思考を表示するか: 思考がある && MASTERでない && 考え中・投票中でない
-  // 発言フェーズでも思考は完了済みとして表示する
-  const hasThought = thought.length > 0 && !isMaster && !isThinking && !isVoting;
-  const showThought = hasThought && (contentPhase === 'thought' || contentPhase === 'speech');
-  const thoughtComplete = contentPhase === 'speech'; // 発言フェーズなら思考は完了済み
+  // UI方針: 内心は表示しない
+  const showThought = false;
 
   // 発言を表示するか: 発言フェーズ && 発言がある
   const showSpeech = contentPhase === 'speech' && speech.length > 0 && !isThinking && !isVoting;

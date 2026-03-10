@@ -14,12 +14,12 @@ interface Props {
  */
 export const Header: React.FC<Props> = ({ round, turn, topic, onLogClick }) => {
   return (
-    <div className="h-[62px] flex items-center justify-between px-3 border-b border-green-900 bg-black">
-      <div className="px-2 min-w-0">
+    <div className="min-h-[74px] flex items-center justify-between px-3 border-b border-green-900 bg-black">
+      <div className="px-2 min-w-0 pr-2">
         <div className="text-green-400 font-bold text-xs tracking-wider">
           ROUND {round}-{turn}
         </div>
-        <div className="text-green-300/90 text-[11px] leading-tight truncate max-w-[240px]">
+        <div className="text-green-300/90 text-[12px] leading-snug break-words max-w-[260px]">
           お題: {topic || '読み込み中...'}
         </div>
       </div>
