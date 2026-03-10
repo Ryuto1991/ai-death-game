@@ -96,6 +96,19 @@ export const MainScreen: React.FC<Props> = ({
   onMouthOpen,
   onDialogPhaseChange,
 }) => {
+  const activeName = currentDisplay.agentName ?? '---';
+  const aliveAgents = agents.filter((agent) => agent.isAlive);
+  const leadIppon = Math.max(0, ...aliveAgents.map((agent) => topicIppon[agent.id] || 0));
+  const progressLabel = isVoting
+    ? '観客集計中'
+    : isThinking
+    ? `${activeName}が回答作成中`
+    : isTyping
+    ? `${activeName}の回答を表示中`
+    : waitingForTap
+    ? 'タップで次へ'
+    : '進行中';
+
   const showAnswerUnderPortrait =
     !!currentDisplay.speech &&
     !isThinking &&
@@ -113,6 +126,14 @@ export const MainScreen: React.FC<Props> = ({
         <div className="text-[11px] text-green-500/80 font-bold">お題</div>
         <div className="text-sm text-green-200 leading-snug break-words">
           {topic || '読み込み中...'}
+        </div>
+        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px]">
+          <div className="border border-green-900 bg-black/40 px-2 py-1 text-green-300">
+            進行: {progressLabel}
+          </div>
+          <div className="border border-green-900 bg-black/40 px-2 py-1 text-green-300">
+            現在: {activeName}
+          </div>
         </div>
         <div className="mt-2">
           <div className="flex items-center justify-between text-[11px] text-green-500/80 font-bold">
@@ -138,20 +159,32 @@ export const MainScreen: React.FC<Props> = ({
       />
 
       {/* 各キャラの最新回答一覧（見失い防止） */}
-      <div className="px-3 py-2 border-b border-green-900 bg-[#041004] max-h-[112px] overflow-y-auto">
+      <div className="px-3 py-2 border-b border-green-900 bg-[#041004] max-h-[152px] overflow-y-auto">
         <div className="text-[11px] text-green-500/80 font-bold">最新回答一覧</div>
-        <div className="mt-1 space-y-1">
+        <div className="mt-1 space-y-1.5">
           {agents.map((agent) => (
-            <div key={agent.id} className="text-xs leading-snug">
-              <span className="text-green-400">{agent.name}（{topicIppon[agent.id] || 0}本）：</span>
-              <span className="text-green-100 break-words">{latestAnswers[agent.id] || '---'}</span>
+            <div
+              key={agent.id}
+              className={`text-xs leading-snug border px-2 py-1 ${
+                agent.id === currentDisplay.agentId
+                  ? 'border-green-400 bg-green-950/20'
+                  : 'border-green-900 bg-black/20'
+              }`}
+            >
+              <div className="flex items-center justify-between">
+                <span className="text-green-400">{agent.name}</span>
+                <span className={`${(topicIppon[agent.id] || 0) === leadIppon && leadIppon > 0 ? 'text-lime-300' : 'text-green-500/80'}`}>
+                  IPPON {topicIppon[agent.id] || 0}
+                </span>
+              </div>
+              <div className="text-green-100 break-words">{latestAnswers[agent.id] || '---'}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* フォーカスエリア: 16:9比率で横長に */}
-      <div className="h-[30%] sm:h-[35%]">
+      <div className="h-[24%] sm:h-[28%]">
         <FocusArea
           characterId={currentDisplay.characterId}
           expression={currentDisplay.expression}
