@@ -69,6 +69,28 @@ function safeErrorMessage(error: unknown): string {
   return 'Unknown error';
 }
 
+function parseRetryDelayMs(error: unknown): number | null {
+  const msg = safeErrorMessage(error);
+  const retryInMatch = msg.match(/retry in ([0-9]+(?:\.[0-9]+)?)s/i);
+  if (retryInMatch) {
+    return Math.ceil(Number(retryInMatch[1]) * 1000);
+  }
+  const retryDelayMatch = msg.match(/"retryDelay":"([0-9]+)s"/i);
+  if (retryDelayMatch) {
+    return Number(retryDelayMatch[1]) * 1000;
+  }
+  return null;
+}
+
+function isRateLimitError(error: unknown): boolean {
+  const msg = safeErrorMessage(error);
+  return /429|RESOURCE_EXHAUSTED|quota exceeded/i.test(msg);
+}
+
+async function sleep(ms: number): Promise<void> {
+  await new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * Primary → Fallback → テキストフォールバックの3段階で試行する
  * ゲーム継続を最優先とし、全失敗時はフォールバック結果を返す
@@ -82,11 +104,29 @@ async function withModelFallback<T>(
   onFallbackUsed?: (errorMessage: string) => void
 ): Promise<T> {
   const ai = getByokClient(apiKey);
+  const runWithRetry = async (model: string): Promise<T> => {
+    const maxAttempts = 3;
+    let attempt = 0;
+    while (attempt < maxAttempts) {
+      try {
+        return await fn(ai, model);
+      } catch (error) {
+        attempt += 1;
+        if (!isRateLimitError(error) || attempt >= maxAttempts) {
+          throw error;
+        }
+        const retryMs = parseRetryDelayMs(error) ?? (1500 * (2 ** (attempt - 1)));
+        await sleep(Math.min(retryMs + 200, 15000));
+      }
+    }
+    throw new Error('unreachable');
+  };
+
   try {
-    return await fn(ai, BYOK_PRIMARY_MODEL);
+    return await runWithRetry(BYOK_PRIMARY_MODEL);
   } catch (primaryError) {
     try {
-      return await fn(ai, BYOK_FALLBACK_MODEL);
+      return await runWithRetry(BYOK_FALLBACK_MODEL);
     } catch (fallbackError) {
       const fallbackMsg = safeErrorMessage(fallbackError);
       onFallbackUsed?.(`Gemini API エラー: ${fallbackMsg}`);
