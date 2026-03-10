@@ -4,7 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Agent } from '@/lib/types';
 import { canPlay, getRemainingPlays, getMaxPlaysPerDay } from '@/lib/playLimit';
 import { getMaxAchievedRarity } from '@/lib/hiddenCharacter';
-import { AGENT_PERSONALITIES } from '@/lib/constants';
+import { AGENT_PERSONALITIES } from '@/lib/characters';
 import { useGameStore } from '@/lib/store';
 
 interface Props {

@@ -916,7 +916,7 @@ export default function GamePage() {
       const userVote = storeState.userVote;
 
       if (userVote && userVote.type !== 'watch' && userVote.targetId) {
-        const addVotes = userVote.type === 'force_eliminate' ? 10 : 1;
+        const addVotes = 1;
         const targetId = userVote.targetId; // クロージャ用に保持
 
         // 1. 最初にログを表示（「GMは〇〇を強制退場」）
@@ -941,8 +941,8 @@ export default function GamePage() {
           setCurrentLogIndex(newLogsLength - 1);
           setUIState({ type: 'VOTE_GM_TYPING' });
 
-          // アニメーション時間後に完了（+10の場合2.8秒、+1の場合0.5秒 + バッファ）
-          const animationDuration = addVotes === 10 ? 3000 : 700;
+          // アニメーション時間後に完了
+          const animationDuration = 700;
           setTimeout(() => {
             setGmVoteAnimation(null);
           }, animationDuration);

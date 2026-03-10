@@ -17,7 +17,6 @@ import {
   LogType,
 } from './types';
 import {
-  AGENT_PERSONALITIES,
   MASTER_PROFILE,
   SYSTEM_PROMPT_DISCUSSION,
   SYSTEM_PROMPT_VOTE,
@@ -26,6 +25,7 @@ import {
   SYSTEM_PROMPT_DUAL_VICTORY_COMMENT,
   FINAL_ROUND_VOTE_RULE,
 } from './constants';
+import { AGENT_PERSONALITIES } from './characters';
 import { type DynamicPromptContext } from './ruleConfig';
 import { gameConfig } from './config';
 
@@ -531,7 +531,7 @@ export const buildEliminationReactionPrompt = (
   logs: LogEntry[],
   allAgents: Agent[],
   selfVoted: boolean = false,
-  gmVote?: { type: 'force_eliminate' | 'one_vote' | 'watch'; targetId: string | null },
+  gmVote?: { type: 'one_vote' | 'watch'; targetId: string | null },
   options?: { verbose?: boolean }
 ): string => {
   const personality = AGENT_PERSONALITIES.find((p) => p.name === agent.name);
@@ -551,13 +551,7 @@ export const buildEliminationReactionPrompt = (
   let gmInfo = '';
   if (gmVote) {
     const isTargetSelf = gmVote.targetId === agent.id;
-    if (gmVote.type === 'force_eliminate') {
-      if (isTargetSelf) {
-        gmInfo = '\n※重要: ゲームマスター（神）があなたを「強制退場」させました。絶対的な権力による介入です。';
-      } else {
-        gmInfo = '\n※ゲームマスターは別の人物を強制退場させました。';
-      }
-    } else if (gmVote.type === 'one_vote') {
+    if (gmVote.type === 'one_vote') {
       if (isTargetSelf) {
         gmInfo = '\n※重要: ゲームマスター（神）があなたに1票を投じました。その票があなたの退場を決定づけた可能性があります。';
       } else {

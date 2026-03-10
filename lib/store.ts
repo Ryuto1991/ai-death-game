@@ -18,12 +18,12 @@ import {
 } from './types';
 import { INITIAL_UI_STATE } from './uiState';
 import {
-  AGENT_PERSONALITIES,
   INITIAL_STAGE_TIME,
   MASTER_CHARACTER,
   MASTER_LINES,
   OGIRI_TOPICS,
 } from './constants';
+import { AGENT_PERSONALITIES } from './characters';
 import { getMaxAchievedRarity } from './hiddenCharacter';
 import { parseStreamResponse } from './turnResponseParser';
 import { timerRegistry } from './timerRegistry';
@@ -748,8 +748,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // ユーザー投票を加算
       if (userVote && userVote.type !== 'watch' && userVote.targetId) {
-        const voteCount = userVote.type === 'force_eliminate' ? 10 : 1;
-        tallies[userVote.targetId] = (tallies[userVote.targetId] || 0) + voteCount;
+        tallies[userVote.targetId] = (tallies[userVote.targetId] || 0) + 1;
       }
 
       set({
@@ -772,8 +771,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       const { userVote } = get();
       if (userVote && userVote.type !== 'watch' && userVote.targetId) {
-        const voteCount = userVote.type === 'force_eliminate' ? 10 : 1;
-        fallbackTallies[userVote.targetId] = (fallbackTallies[userVote.targetId] || 0) + voteCount;
+        fallbackTallies[userVote.targetId] = (fallbackTallies[userVote.targetId] || 0) + 1;
       }
 
       set({
@@ -826,9 +824,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // ゲーム統計を更新
     const newStats = { ...gameStats };
-    if (vote.type === 'force_eliminate') {
-      newStats.forceEliminateCount++;
-    } else if (vote.type === 'one_vote') {
+    if (vote.type === 'one_vote') {
       newStats.oneVoteCount++;
     } else {
       newStats.watchCount++;
@@ -868,11 +864,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const target = agents.find((a) => a.id === userVote.targetId);
       const targetName = target?.name || 'UNKNOWN';
 
-      if (userVote.type === 'force_eliminate') {
-        addLog(LogType.MASTER, MASTER_LINES.GM_VOTE_FORCE_ELIMINATE(targetName), MASTER_CHARACTER.id);
-      } else {
-        addLog(LogType.MASTER, MASTER_LINES.GM_VOTE_ONE(targetName), MASTER_CHARACTER.id);
-      }
+      addLog(LogType.MASTER, MASTER_LINES.GM_VOTE_ONE(targetName), MASTER_CHARACTER.id);
     }
 
     set({ votingComplete: true });

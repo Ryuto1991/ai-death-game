@@ -351,7 +351,7 @@ export async function byokEliminationReaction(
     logs: LogEntry[];
     allAgents: Agent[];
     selfVoted?: boolean;
-    gmVote?: { type: 'force_eliminate' | 'one_vote' | 'watch'; targetId: string | null };
+    gmVote?: { type: 'one_vote' | 'watch'; targetId: string | null };
     onError?: (msg: string) => void;
   },
   apiKey: string

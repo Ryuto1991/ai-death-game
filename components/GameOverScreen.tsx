@@ -5,7 +5,7 @@ import Image from 'next/image';
 import { useGameStore } from '@/lib/store';
 import { evaluateTrophies, getMostRareTrophy, getTrophySlug } from '@/lib/trophies';
 import { getMaxAchievedRarity, setMaxAchievedRarity } from '@/lib/hiddenCharacter';
-import { AGENT_PERSONALITIES } from '@/lib/constants';
+import { AGENT_PERSONALITIES } from '@/lib/characters';
 
 interface Props {
   onRestart: () => void;

@@ -103,19 +103,6 @@ export const UserVotingModal: React.FC<Props> = ({ isOpen, candidates, onVote })
 
         {/* アクションボタン */}
         <div className="space-y-2">
-          {/* 強制退場ボタン - 赤ベタ #FF0000、白文字 */}
-          <button
-            onClick={() => handleVote('force_eliminate')}
-            disabled={!selectedTargetId}
-            className="w-full py-3 text-sm font-dotgothic font-bold disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
-            style={{
-              backgroundColor: '#FF0000',
-              color: '#FFFFFF',
-            }}
-          >
-            強制退場: {selectedName}
-          </button>
-
           {/* 1票ボタン - 黄色ベタ #FFFF00、黒文字 */}
           <button
             onClick={() => handleVote('one_vote')}
@@ -144,7 +131,6 @@ export const UserVotingModal: React.FC<Props> = ({ isOpen, candidates, onVote })
 
         {/* 説明 */}
         <div className="mt-4 text-green-700 text-xs font-dotgothic border border-green-900/50 bg-green-950/20 px-2 py-2 leading-relaxed rounded">
-          <p>・<span style={{ color: '#FF0000' }}>強制退場</span>: 対象に+10票（確定で最多票）</p>
           <p>・<span style={{ color: '#FFFF00' }}>1票投じる</span>: 対象に+1票</p>
           <p>・<span style={{ color: '#33ff00' }}>見守る</span>: 何もしない</p>
         </div>

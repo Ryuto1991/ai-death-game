@@ -91,7 +91,7 @@ export enum GamePhase {
 // ユーザー投票関連
 // ============================================
 
-export type UserVoteType = 'force_eliminate' | 'one_vote' | 'watch';
+export type UserVoteType = 'one_vote' | 'watch';
 
 export interface UserVote {
   type: UserVoteType;
