@@ -90,6 +90,13 @@ export const MainScreen: React.FC<Props> = ({
   onMouthOpen,
   onDialogPhaseChange,
 }) => {
+  const showAnswerUnderPortrait =
+    !!currentDisplay.speech &&
+    !isThinking &&
+    !isVoting &&
+    !currentDisplay.isMaster &&
+    !currentDisplay.isExecuting;
+
   return (
     <div className="flex flex-col h-full bg-black text-green-500 max-w-2xl mx-auto">
       {/* ヘッダー: 約5% */}
@@ -120,6 +127,17 @@ export const MainScreen: React.FC<Props> = ({
           mouthOpen={mouthOpen}
           isAlive={currentDisplay.isAlive}
         />
+      </div>
+
+      {/* キャラ直下の回答表示 */}
+      <div className="px-3 py-2 border-b border-green-900 bg-[#061506] min-h-[56px]">
+        {showAnswerUnderPortrait ? (
+          <div className="text-green-100 text-sm leading-snug break-words">
+            {currentDisplay.speech}
+          </div>
+        ) : (
+          <div className="text-green-700 text-xs">回答待機中...</div>
+        )}
       </div>
 
       {/* ダイアログエリア: 約43% */}
