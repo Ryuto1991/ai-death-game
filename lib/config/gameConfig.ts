@@ -10,7 +10,7 @@ import type { GameConfig } from './types';
 
 export const DEFAULT_GAME_CONFIG: GameConfig = {
   // 1ラウンドあたりの発言回数
-  turnsPerRound: 1,
+  turnsPerRound: 3,
 
   // 同率時の処理（全員退場）
   tieBreaker: 'all_eliminate',

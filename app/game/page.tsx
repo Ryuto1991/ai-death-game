@@ -54,6 +54,7 @@ export default function GamePage() {
     round,
     roundTopic,
     audienceGauge,
+    topicIppon,
     currentTurnInRound,
     agents,
     logs,
@@ -470,10 +471,14 @@ export default function GamePage() {
       // 議論フェーズ: 投票開始セリフ後
       // ============================================
       case 'DISCUSSION_COMPLETE_TAP_WAIT': {
-        // 観客投票を開始（ユーザー投票モーダルは使用しない）
+        // お題終了→即IPPON集計（投票演出はスキップ）
         setUserVote({ type: 'watch', targetId: null });
-        setUIState({ type: 'VOTE_FETCHING' });
-        fetchAllVotesParallel();
+        advanceToResolution();
+        setTimeout(() => {
+          const newLogsLength = useGameStore.getState().logs.length;
+          setCurrentLogIndex(newLogsLength - 1);
+          setUIState({ type: 'RESOLUTION_ANNOUNCE_TYPING' });
+        }, 0);
         break;
       }
 
@@ -1268,6 +1273,7 @@ export default function GamePage() {
             topic={roundTopic}
             audienceGauge={audienceGauge}
             agents={agentData}
+            topicIppon={topicIppon}
             latestAnswers={latestAnswers}
             currentDisplay={currentDisplay}
             contentPhase={contentPhase}

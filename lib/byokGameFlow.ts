@@ -11,6 +11,7 @@ import type { Expression } from './types';
 import { MASTER_CHARACTER, MASTER_LINES } from './constants';
 import { gameConfig } from './config';
 import { useGameStore } from './store';
+import { judgeIppon } from './ippon';
 
 type GameStore = ReturnType<typeof useGameStore.getState>;
 type SetFn = (partial: Partial<GameStore> | ((state: GameStore) => Partial<GameStore>)) => void;
@@ -156,6 +157,12 @@ export async function byokProcessDiscussionTurn(
     updateLogStream(placeholderLogId, rawText);
     finalizeLogStream(placeholderLogId);
     setAgentSpeaking(speaker.id, false);
+    const recentSpeeches = logs
+      .filter((l) => l.type === LogType.AGENT_TURN && l.agentId !== speaker.id)
+      .map((l) => l.speech ?? '')
+      .filter((v) => !!v);
+    const judged = judgeIppon(speaker, result.speech ?? '', recentSpeeches);
+    addLog(LogType.MASTER, judged.announce, MASTER_CHARACTER.id);
 
     // 状態更新
     const nextTurnIndex = currentTurnIndex + 1;
@@ -166,6 +173,10 @@ export async function byokProcessDiscussionTurn(
       isProcessing: false,
       isAnimating: true,
       currentAnimatingLogId: placeholderLogId,
+      audienceGauge: Math.max(0, Math.min(100, (state.audienceGauge ?? 50) + judged.laughDelta)),
+      topicIppon: judged.awarded
+        ? { ...state.topicIppon, [speaker.id]: (state.topicIppon[speaker.id] || 0) + 1 }
+        : state.topicIppon,
       discussionComplete: isDiscussionComplete ? true : state.discussionComplete,
     }));
   } catch (error) {

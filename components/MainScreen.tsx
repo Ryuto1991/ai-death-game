@@ -44,6 +44,7 @@ interface Props {
   topic: string;
   audienceGauge: number;
   agents: AgentData[];
+  topicIppon: Record<string, number>;
   latestAnswers: Record<string, string>;
   currentDisplay: CurrentDisplay;
   contentPhase: ContentPhase; // 現在表示するコンテンツフェーズ（親が制御）
@@ -76,6 +77,7 @@ export const MainScreen: React.FC<Props> = ({
   topic,
   audienceGauge,
   agents,
+  topicIppon,
   latestAnswers,
   currentDisplay,
   contentPhase,
@@ -141,7 +143,7 @@ export const MainScreen: React.FC<Props> = ({
         <div className="mt-1 space-y-1">
           {agents.map((agent) => (
             <div key={agent.id} className="text-xs leading-snug">
-              <span className="text-green-400">{agent.name}：</span>
+              <span className="text-green-400">{agent.name}（{topicIppon[agent.id] || 0}本）：</span>
               <span className="text-green-100 break-words">{latestAnswers[agent.id] || '---'}</span>
             </div>
           ))}

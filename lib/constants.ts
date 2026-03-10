@@ -40,10 +40,10 @@ export const MASTER_PROFILE = {
 export const MASTER_LINES = {
   GAME_START: (round: number, topic: string) =>
     round === 1
-      ? `ようこそ「AI一本デス大喜利」へ。……ルールを説明する。各芸人は一本だけ答え、全員で一番ウケた回答に1票入れる。最下位は舞台持ち時間-1、0で退場だ。\n\nラウンド1のお題は……「${topic}」`
+      ? `ようこそ「AI一本デス大喜利」へ。……ルールを説明する。1つのお題で複数打席、刺さればIPPONだ。お題終了時に伸びなかった者の舞台持ち時間を削る。\n\nラウンド1のお題は……「${topic}」`
       : `ラウンド${round}のお題は……「${topic}」`,
   NEXT_TURN: (turn: number) => `第${turn}ターン……開始だ。`,
-  VOTE_START: '全員の一本が出そろった。……投票を始めろ。',
+  VOTE_START: 'このお題の打席が出そろった。……IPPONを集計する。',
   VOTE_ANNOUNCE: (voter: string, target: string) =>
     `${voter}は……${target}に投票した。`,
   ROUND_TOP: (names: string[]) =>

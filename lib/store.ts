@@ -28,6 +28,7 @@ import { getMaxAchievedRarity } from './hiddenCharacter';
 import { parseStreamResponse } from './turnResponseParser';
 import { timerRegistry } from './timerRegistry';
 import { gameConfig } from './config';
+import { judgeIppon } from './ippon';
 
 
 // ============================================
@@ -69,6 +70,7 @@ interface GameStore {
   round: number;
   roundTopic: string;
   audienceGauge: number;
+  topicIppon: Record<string, number>;
   currentTurnInRound: number; // ラウンド内ターン番号（1始まり、ターン周回ごとに+1）
   agents: Agent[];
   logs: LogEntry[];
@@ -261,6 +263,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   round: 1,
   roundTopic: '',
   audienceGauge: 50,
+  topicIppon: {},
   currentTurnInRound: 1,
   agents: [],
   logs: [],
@@ -347,6 +350,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       round: 1,
       roundTopic: '',
       audienceGauge: 50,
+      topicIppon: {},
       currentTurnInRound: 1,
       currentTurnIndex: 0,
       currentVoteIndex: 0,
@@ -379,6 +383,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentTurnIndex: 0,
       playCountConsumed: false,
       roundTopic: initialTopic,
+      topicIppon: {},
     });
     addLog(LogType.MASTER, MASTER_LINES.GAME_START(1, initialTopic), MASTER_CHARACTER.id);
   },
@@ -553,6 +558,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
           isStreaming: false,
           rawStreamText: rawText,
         });
+        const recentSpeeches = logs
+          .filter((l) => l.type === LogType.AGENT_TURN && l.agentId !== agent.id)
+          .map((l) => l.speech ?? '')
+          .filter((v) => !!v);
+        const judged = judgeIppon(agent, parsed.external_speech ?? '', recentSpeeches);
+        addLog(LogType.MASTER, judged.announce, MASTER_CHARACTER.id);
 
         const nextTurnIndex = currentTurnIndex + 1;
         const isDiscussionComplete = nextTurnIndex >= totalTurns;
@@ -563,6 +574,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
           isProcessing: false,
           isAnimating: true,
           currentAnimatingLogId: logId,
+          audienceGauge: Math.max(0, Math.min(100, state.audienceGauge + judged.laughDelta)),
+          topicIppon: judged.awarded
+            ? { ...state.topicIppon, [agent.id]: (state.topicIppon[agent.id] || 0) + 1 }
+            : state.topicIppon,
           discussionComplete: isDiscussionComplete ? true : state.discussionComplete,
         }));
         return;
@@ -876,7 +891,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // 投票結果適用（退場者を特定してキューに入れ、司会ログを追加）
   // 注意: この時点ではisAliveは変更しない（断末魔演出後に変更）
   applyVotingResult: (): { eliminated: string[]; penalized: string[] } => {
-    const { agents, voteTallies, addLog, userVote, gameStats, round, audienceGauge } = get();
+    const { agents, topicIppon, addLog, userVote, gameStats, round, audienceGauge } = get();
     const aliveAgents = agents.filter((a) => a.isAlive);
     const eliminated: string[] = [];
     const penalized: string[] = [];
@@ -887,10 +902,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return { eliminated, penalized };
     }
 
-    // 生存者全員の得票を0埋めして最下位/トップ判定
+    // 生存者全員のIPPONを0埋めして最下位/トップ判定
     const scores: Record<string, number> = {};
     aliveAgents.forEach((agent) => {
-      scores[agent.id] = voteTallies[agent.id] || 0;
+      scores[agent.id] = topicIppon[agent.id] || 0;
     });
 
     let maxVotes = Number.MIN_SAFE_INTEGER;
@@ -902,6 +917,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const topIds = aliveAgents.filter((a) => scores[a.id] === maxVotes).map((a) => a.id);
     const bottomIds = aliveAgents.filter((a) => scores[a.id] === minVotes).map((a) => a.id);
+    const zeroIpponIds = aliveAgents.filter((a) => scores[a.id] === 0).map((a) => a.id);
+    const effectivePenalized = Array.from(new Set([...zeroIpponIds, ...bottomIds])).filter((id) => !topIds.includes(id));
     const voteSpread = maxVotes - minVotes;
     const nextAudienceGauge = Math.max(
       0,
@@ -915,14 +932,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const topNames = topIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
       addLog(LogType.MASTER, MASTER_LINES.ROUND_TOP(topNames), MASTER_CHARACTER.id);
     }
-    if (bottomIds.length > 0) {
-      const bottomNames = bottomIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
+    if (effectivePenalized.length > 0) {
+      const bottomNames = effectivePenalized.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
       addLog(LogType.MASTER, MASTER_LINES.ROUND_BOTTOM(bottomNames), MASTER_CHARACTER.id);
     }
 
     // 最下位全員の舞台持ち時間を-1。0以下で退場キューへ。
     const stageTimeNextById: Record<string, number> = {};
-    bottomIds.forEach((id) => {
+    effectivePenalized.forEach((id) => {
       const agent = agents.find((a) => a.id === id);
       if (!agent) return;
       const nextStageTime = Math.max(0, agent.stageTime - 1);
@@ -974,7 +991,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             currentExpression: 'painful' as Expression,
           };
         }
-        if (bottomIds.includes(a.id)) {
+        if (effectivePenalized.includes(a.id)) {
           return {
             ...a,
             stageTime: nextStageTime,
@@ -994,6 +1011,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       eliminationReactionsFetched: false,
       gameStats: updatedStats,
       audienceGauge: nextAudienceGauge,
+      topicIppon: {},
     }));
 
     return { eliminated, penalized };
@@ -1223,6 +1241,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       set({
         round: newRound,
         roundTopic: nextTopic,
+        topicIppon: {},
         currentTurnInRound: 1,
         phase: GamePhase.DISCUSSION,
         currentTurnIndex: 0,
@@ -1258,6 +1277,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       round: 1,
       roundTopic: '',
       audienceGauge: 50,
+      topicIppon: {},
       currentTurnInRound: 1,
       agents: createAgents(),
       logs: [],
@@ -1369,11 +1389,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // 投票フェーズから結果適用フェーズへ明示的に遷移
   advanceToResolution: () => {
-    const { votingComplete, applyVotingResult, fetchEliminationReactions } = get();
-
-    if (!votingComplete) {
-      return;
-    }
+    const { applyVotingResult, fetchEliminationReactions } = get();
 
     set({ votingComplete: false });
     const result = applyVotingResult();
