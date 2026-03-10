@@ -53,6 +53,7 @@ export default function GamePage() {
     phase,
     round,
     roundTopic,
+    audienceGauge,
     currentTurnInRound,
     agents,
     logs,
@@ -1297,6 +1298,7 @@ export default function GamePage() {
             round={round}
             turn={currentTurnInRound}
             topic={roundTopic}
+            audienceGauge={audienceGauge}
             agents={agentData}
             currentDisplay={currentDisplay}
             contentPhase={contentPhase}

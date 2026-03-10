@@ -68,6 +68,7 @@ interface GameStore {
   phase: GamePhase;
   round: number;
   roundTopic: string;
+  audienceGauge: number;
   currentTurnInRound: number; // ラウンド内ターン番号（1始まり、ターン周回ごとに+1）
   agents: Agent[];
   logs: LogEntry[];
@@ -259,6 +260,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   phase: GamePhase.IDLE,
   round: 1,
   roundTopic: '',
+  audienceGauge: 50,
   currentTurnInRound: 1,
   agents: [],
   logs: [],
@@ -344,6 +346,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: GamePhase.IDLE,
       round: 1,
       roundTopic: '',
+      audienceGauge: 50,
       currentTurnInRound: 1,
       currentTurnIndex: 0,
       currentVoteIndex: 0,
@@ -873,7 +876,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // 投票結果適用（退場者を特定してキューに入れ、司会ログを追加）
   // 注意: この時点ではisAliveは変更しない（断末魔演出後に変更）
   applyVotingResult: (): { eliminated: string[]; penalized: string[] } => {
-    const { agents, voteTallies, addLog, userVote, gameStats, round } = get();
+    const { agents, voteTallies, addLog, userVote, gameStats, round, audienceGauge } = get();
     const aliveAgents = agents.filter((a) => a.isAlive);
     const eliminated: string[] = [];
     const penalized: string[] = [];
@@ -899,6 +902,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     const topIds = aliveAgents.filter((a) => scores[a.id] === maxVotes).map((a) => a.id);
     const bottomIds = aliveAgents.filter((a) => scores[a.id] === minVotes).map((a) => a.id);
+    const voteSpread = maxVotes - minVotes;
+    const nextAudienceGauge = Math.max(
+      0,
+      Math.min(
+        100,
+        audienceGauge + (voteSpread >= 2 ? 10 : 4) + (topIds.length === 1 ? 3 : -2) - (bottomIds.length >= 3 ? 4 : 0)
+      )
+    );
 
     if (topIds.length > 0) {
       const topNames = topIds.map((id) => agents.find((a) => a.id === id)?.name || 'UNKNOWN');
@@ -982,6 +993,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       currentEliminationIndex: 0,
       eliminationReactionsFetched: false,
       gameStats: updatedStats,
+      audienceGauge: nextAudienceGauge,
     }));
 
     return { eliminated, penalized };
@@ -1245,6 +1257,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       phase: GamePhase.IDLE,
       round: 1,
       roundTopic: '',
+      audienceGauge: 50,
       currentTurnInRound: 1,
       agents: createAgents(),
       logs: [],

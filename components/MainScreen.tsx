@@ -42,6 +42,7 @@ interface Props {
   round: number;
   turn: number;
   topic: string;
+  audienceGauge: number;
   agents: AgentData[];
   currentDisplay: CurrentDisplay;
   contentPhase: ContentPhase; // 現在表示するコンテンツフェーズ（親が制御）
@@ -72,6 +73,7 @@ export const MainScreen: React.FC<Props> = ({
   round,
   turn,
   topic,
+  audienceGauge,
   agents,
   currentDisplay,
   contentPhase,
@@ -107,6 +109,18 @@ export const MainScreen: React.FC<Props> = ({
         <div className="text-[11px] text-green-500/80 font-bold">お題</div>
         <div className="text-sm text-green-200 leading-snug break-words">
           {topic || '読み込み中...'}
+        </div>
+        <div className="mt-2">
+          <div className="flex items-center justify-between text-[11px] text-green-500/80 font-bold">
+            <span>観客ゲージ</span>
+            <span>{audienceGauge}%</span>
+          </div>
+          <div className="mt-1 h-2 w-full overflow-hidden rounded-sm border border-green-800 bg-black/70">
+            <div
+              className="h-full bg-gradient-to-r from-green-700 via-green-500 to-lime-300 transition-all duration-500"
+              style={{ width: `${audienceGauge}%` }}
+            />
+          </div>
         </div>
       </div>
 
