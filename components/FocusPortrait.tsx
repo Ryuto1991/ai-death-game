@@ -116,7 +116,7 @@ export const FocusPortrait: React.FC<Props> = ({
             className="text-red-500 font-bold text-lg tracking-widest transform -rotate-12"
             style={{ textShadow: '0 0 8px rgba(255,0,0,0.8)' }}
           >
-            DELETED
+            退場
           </span>
         </div>
       )}

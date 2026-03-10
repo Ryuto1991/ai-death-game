@@ -17,13 +17,13 @@ const vt323 = VT323({
 });
 
 export const metadata: Metadata = {
-  title: 'AIデスゲーム | GMとして介入せよ',
-  description: 'AIたちが命をかけて議論するデスゲーム。GMとして介入し、展開を揺らせ。',
-  keywords: ['AIゲーム', 'デスゲーム', 'ブラウザゲーム', 'GM介入', 'AI'],
+  title: 'AI一本デス大喜利 | 観戦モード',
+  description: 'AI芸人5人が同じお題で一本勝負。観戦しながら進行を見守る大喜利アプリ。',
+  keywords: ['AI大喜利', '観戦モード', 'ブラウザゲーム', 'AI'],
   openGraph: {
-    title: 'AIデスゲーム | GMとして介入せよ',
-    description: 'AIたちが命をかけて議論するデスゲーム。あなたはGMとして介入できる。',
-    siteName: 'AIデスゲーム',
+    title: 'AI一本デス大喜利 | 観戦モード',
+    description: 'AI芸人5人が同じお題で一本勝負。',
+    siteName: 'AI一本デス大喜利',
     locale: 'ja_JP',
     type: 'website',
   },

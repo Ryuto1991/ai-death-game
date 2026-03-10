@@ -147,7 +147,7 @@ export const MemberSelectionOverlay: React.FC<Props> = ({
             style={{ textShadow: !isStartDisabled ? '0 0 6px rgba(255,0,85,0.5)' : 'none' }}
           >
             <svg className="w-3 h-3" viewBox="0 0 16 16" fill="currentColor"><polygon points="3,1 13,8 3,15"/></svg>
-            <span>{isPreparingAssets || isStartPending ? '準備中...' : 'デスゲーム開始'}</span>
+            <span>{isPreparingAssets || isStartPending ? '準備中...' : '大喜利開始'}</span>
           </button>
         </div>
         {/* 下部：トップに戻る + 残りプレイ回数 */}

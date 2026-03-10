@@ -123,14 +123,14 @@ export const MiniPortrait: React.FC<Props> = ({
           }}
         />
 
-        {/* DELETED オーバーレイ */}
+        {/* 退場オーバーレイ */}
         {!isAlive && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/40">
             <span
               className="text-red-500 font-bold text-[10px] tracking-wider transform -rotate-12"
               style={{ textShadow: '0 0 6px rgba(255,0,0,0.9)' }}
             >
-              DELETED
+              退場
             </span>
           </div>
         )}

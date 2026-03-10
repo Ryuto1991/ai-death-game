@@ -99,7 +99,7 @@ export const GameOverScreen: React.FC<Props> = ({ onRestart, onViewLog, disableU
       trophyText = '全滅エンドを発生させた';
     }
 
-    return `AIたちが行う【AIデスゲーム】で\n${trophyText}！\n\nあなたも #AIデスゲーム に介入せよ`;
+    return `AIたちが行う【AI一本デス大喜利】で\n${trophyText}！\n\nあなたも #AI一本デス大喜利 を観戦しよう`;
   }, [winner, isDualSurvival, survivors, bestTrophy]);
 
   // シェアURL（OGP用、今後実装）
@@ -123,7 +123,7 @@ export const GameOverScreen: React.FC<Props> = ({ onRestart, onViewLog, disableU
       <div className="w-[86%] max-w-md md:w-[78%] mb-6">
         <Image
           src="/images/lp/hero-logo.webp"
-          alt="AIデスゲーム"
+          alt="AI一本デス大喜利"
           width={1000}
           height={338}
           className="w-full h-auto drop-shadow-[0_0_14px_rgba(0,0,0,0.8)]"

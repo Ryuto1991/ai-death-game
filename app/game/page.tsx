@@ -1208,7 +1208,7 @@ export default function GamePage() {
         return (
           <div className="h-full flex flex-col items-center justify-center bg-black">
             <h1 className="text-4xl md:text-6xl font-bold text-green-400 animate-pulse text-center mb-8">
-              AIデスゲーム
+              AI一本デス大喜利
             </h1>
             <MemberSelectionOverlay
               agents={agents}
