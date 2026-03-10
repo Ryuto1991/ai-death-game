@@ -139,7 +139,7 @@ export const DialogArea: React.FC<Props> = ({
       clearInterval(typewriterIntervalRef.current);
     }
 
-    const typeSpeed = 16;
+    const typeSpeed = 26;
 
     typewriterIntervalRef.current = setInterval(() => {
       setCurrentDisplayedLength((prev) => {

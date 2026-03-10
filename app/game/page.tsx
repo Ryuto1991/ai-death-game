@@ -37,6 +37,8 @@ import { preloadCharacterImagesWithDecode } from '@/lib/imagePreloader';
  * - game-over: ゲーム終了画面
  */
 type ScreenPhase = 'member-selection' | 'game' | 'log' | 'game-over';
+const TOPIC_THINKING_DELAY_MS = 2200;
+const BETWEEN_ANSWER_DELAY_MS = 1100;
 
 /**
  * ゲームページ
@@ -414,11 +416,13 @@ export default function GamePage() {
         setUIState({ type: 'DISCUSSION_THINKING', agentIndex: 0 });
         const controller = new AbortController();
         currentTurnAbortRef.current = controller;
-        processDiscussionTurn(controller.signal).finally(() => {
-          if (currentTurnAbortRef.current === controller) {
-            currentTurnAbortRef.current = null;
-          }
-        });
+        setTimeout(() => {
+          processDiscussionTurn(controller.signal).finally(() => {
+            if (currentTurnAbortRef.current === controller) {
+              currentTurnAbortRef.current = null;
+            }
+          });
+        }, TOPIC_THINKING_DELAY_MS);
         break;
       }
 
@@ -460,8 +464,12 @@ export default function GamePage() {
             setUIState({ type: 'DISCUSSION_THINKING', agentIndex: uiState.agentIndex + 1 });
             const controller = new AbortController();
             currentTurnAbortRef.current = controller;
-            await processDiscussionTurn(controller.signal);
-            currentTurnAbortRef.current = null;
+            setTimeout(async () => {
+              await processDiscussionTurn(controller.signal);
+              if (currentTurnAbortRef.current === controller) {
+                currentTurnAbortRef.current = null;
+              }
+            }, BETWEEN_ANSWER_DELAY_MS);
           }
         }
         break;
@@ -734,11 +742,13 @@ export default function GamePage() {
             setUIState({ type: 'DISCUSSION_THINKING', agentIndex: 0 });
             const controller = new AbortController();
             currentTurnAbortRef.current = controller;
-            processDiscussionTurn(controller.signal).finally(() => {
-              if (currentTurnAbortRef.current === controller) {
-                currentTurnAbortRef.current = null;
-              }
-            });
+            setTimeout(() => {
+              processDiscussionTurn(controller.signal).finally(() => {
+                if (currentTurnAbortRef.current === controller) {
+                  currentTurnAbortRef.current = null;
+                }
+              });
+            }, TOPIC_THINKING_DELAY_MS);
           }
         } else if (nextPhase === GamePhase.GAME_OVER) {
           setUIState({ type: 'GAME_OVER_FETCHING' });
@@ -1126,8 +1136,13 @@ export default function GamePage() {
     setUIState({ type: 'DISCUSSION_THINKING', agentIndex: 0 });
     const controller = new AbortController();
     currentTurnAbortRef.current = controller;
-    processDiscussionTurn(controller.signal);
-    currentTurnAbortRef.current = null;
+    setTimeout(() => {
+      processDiscussionTurn(controller.signal).finally(() => {
+        if (currentTurnAbortRef.current === controller) {
+          currentTurnAbortRef.current = null;
+        }
+      });
+    }, BETWEEN_ANSWER_DELAY_MS);
   }, [processDiscussionTurn, setUIState]);
 
   const aliveCount = agents.filter((a) => a.isAlive).length;

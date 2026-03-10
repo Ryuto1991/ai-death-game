@@ -548,6 +548,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           return;
         }
 
+        addLog(LogType.MASTER, `${agent.name}が挙手。`, MASTER_CHARACTER.id);
         const rawText = `[${item.thought_expression}]${item.thought}|||[${item.speech_expression}]${item.speech}`;
         const parsed = parseStreamResponse(rawText);
         const logId = addLog(LogType.AGENT_TURN, '', agent.id, {
@@ -562,7 +563,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
           .filter((l) => l.type === LogType.AGENT_TURN && l.agentId !== agent.id)
           .map((l) => l.speech ?? '')
           .filter((v) => !!v);
-        const judged = judgeIppon(agent, parsed.external_speech ?? '', recentSpeeches);
+        const currentIppon = get().topicIppon[agent.id] || 0;
+        const judged = judgeIppon(agent, parsed.external_speech ?? '', recentSpeeches, currentIppon);
         addLog(LogType.MASTER, judged.announce, MASTER_CHARACTER.id);
 
         const nextTurnIndex = currentTurnIndex + 1;

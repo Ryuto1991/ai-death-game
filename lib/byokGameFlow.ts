@@ -80,6 +80,8 @@ export async function byokProcessDiscussionTurn(
     return;
   }
 
+  addLog(LogType.MASTER, `${speaker.name}が挙手。`, MASTER_CHARACTER.id);
+
   // Placeholder ログ作成
   set({ isProcessing: true });
   const placeholderLogId = addLog(LogType.AGENT_TURN, '', speaker.id, {
@@ -161,7 +163,8 @@ export async function byokProcessDiscussionTurn(
       .filter((l) => l.type === LogType.AGENT_TURN && l.agentId !== speaker.id)
       .map((l) => l.speech ?? '')
       .filter((v) => !!v);
-    const judged = judgeIppon(speaker, result.speech ?? '', recentSpeeches);
+    const currentIppon = get().topicIppon[speaker.id] || 0;
+    const judged = judgeIppon(speaker, result.speech ?? '', recentSpeeches, currentIppon);
     addLog(LogType.MASTER, judged.announce, MASTER_CHARACTER.id);
 
     // 状態更新
