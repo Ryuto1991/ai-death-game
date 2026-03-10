@@ -358,44 +358,18 @@ export default function GamePage() {
     useGameStore.getState().setByokMode(true, byokKey);
   }, [router]);
 
-  // currentLogIndexが変わったときに、適切なcontentPhaseを設定
+  // currentLogIndexが変わったときに、常に発言フェーズから表示（内心は非表示）
   useEffect(() => {
     if (currentLogIndex < 0 || !currentLog) return;
-    const log = currentLog;
-
-    // MASTERログや断末魔は思考がないのでspeechから開始
-    // AGENT_TURNやVICTORY_COMMENTは思考がある場合thoughtから開始
-    const hasThought = log.thought && log.thought.length > 0;
-    const isMasterLog = log.type === LogType.MASTER;
-    const isEliminationReaction = log.type === LogType.ELIMINATION_REACTION;
-
-    if (isMasterLog || isEliminationReaction || !hasThought) {
-      setContentPhase('speech');
-    } else {
-      setContentPhase('thought');
-    }
+    setContentPhase('speech');
   }, [currentLogIndex, currentLog?.id]);
 
   // タイプライター完了時
   const handleTypingComplete = useCallback(() => {
-
-    // 思考タイピング完了時 → 発言タイピングへ切り替え
-    if (contentPhase === 'thought') {
-      // 発言があれば発言フェーズへ、なければTAP_WAIT
-      const currentLog = currentLogIndex >= 0 ? logs[currentLogIndex] : null;
-      const hasSpeech = currentLog?.speech && currentLog.speech.length > 0;
-
-      if (hasSpeech) {
-        setContentPhase('speech');
-        // UIStateはTYPINGのまま維持（発言タイピング中）
-        return;
-      }
-    }
-
-    // 発言タイピング完了時（または思考なしの場合）→ TAP_WAIT
+    // 発言タイピング完了時 → TAP_WAIT
     const nextState = getTypingCompleteState(uiState);
     setUIState(nextState);
-  }, [uiState, setUIState, contentPhase, currentLogIndex, logs]);
+  }, [uiState, setUIState]);
 
   // 口パク制御
   const handleMouthOpen = useCallback((open: boolean) => {
@@ -577,11 +551,25 @@ export default function GamePage() {
           return;
         }
 
-        // 断末魔APIフェッチ中（store側で自動開始済み）
+        // 退場者あり: 断末魔へ
         if (eliminationQueue.length > 0) {
           setPendingAgentId(eliminationQueue[0].agentId);
           setUIState({ type: 'RESOLUTION_FETCHING' });
+          break;
         }
+
+        // 退場者なし: そのまま次ラウンドへ
+        advanceToNextRound();
+        setTimeout(() => {
+          const finalLogsLength = useGameStore.getState().logs.length;
+          setCurrentLogIndex(finalLogsLength - 1);
+          const nextPhase = useGameStore.getState().phase;
+          if (nextPhase === GamePhase.GAME_OVER) {
+            setUIState({ type: 'GAME_OVER_FETCHING' });
+          } else {
+            setUIState({ type: 'RESOLUTION_NEXT_ROUND_TYPING' });
+          }
+        }, 0);
         break;
       }
 
@@ -815,14 +803,14 @@ export default function GamePage() {
   const handleTapRef = useRef(handleTap);
   handleTapRef.current = handleTap;
 
-  // テンポ改善: タップ待ちを短い自動送りにする（選択モーダル中は除外）
+  // 読みやすさ改善: タップ待ちを少し長めで自動送り（選択モーダル中は除外）
   useEffect(() => {
     if (!waitingForTap) return;
     if (isInterventionOpen) return;
     if (screenPhase === 'log' || screenPhase === 'game-over') return;
     const timer = setTimeout(() => {
       handleTapRef.current();
-    }, 140);
+    }, 900);
     return () => clearTimeout(timer);
   }, [waitingForTap, isInterventionOpen, screenPhase, uiState.type]);
 
