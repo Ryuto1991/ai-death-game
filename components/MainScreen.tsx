@@ -93,7 +93,15 @@ export const MainScreen: React.FC<Props> = ({
   return (
     <div className="flex flex-col h-full bg-black text-green-500 max-w-2xl mx-auto">
       {/* ヘッダー: 約5% */}
-      <Header round={round} turn={turn} topic={topic} onLogClick={onLogClick} />
+      <Header round={round} turn={turn} onLogClick={onLogClick} />
+
+      {/* お題固定バー: 試合中ずっと表示 */}
+      <div className="px-3 py-2 border-b border-green-900 bg-[#031103]">
+        <div className="text-[11px] text-green-500/80 font-bold">お題</div>
+        <div className="text-sm text-green-200 leading-snug break-words">
+          {topic || '読み込み中...'}
+        </div>
+      </div>
 
       {/* ステータスバー: 約12% */}
       <StatusBar
